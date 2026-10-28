@@ -1,0 +1,17 @@
+name: Publish tested release
+on:
+  push:
+    branches: [main]
+    paths: ['ci/release-request.json']
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish phone-tested draft with mobile version tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python3 ci/update_tested_release.py

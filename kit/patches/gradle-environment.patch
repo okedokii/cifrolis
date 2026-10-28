@@ -1,0 +1,24 @@
+--- a/python/mozboot/mozboot/android.py
++++ b/python/mozboot/mozboot/android.py
+@@ -956,6 +956,7 @@
+     # gradle.properties has no [section] header, so prepend a synthetic one
+     # to satisfy configparser, then strip it back out on write.
+     config = RawConfigParser()
++    config.optionxform = str
+     if gradle_props.exists():
+         config.read_string("[DEFAULT]\n" + gradle_props.read_text(encoding="utf-8"))
+     existing_paths = [
+--- a/mobile/android/mach_commands.py
++++ b/mobile/android/mach_commands.py
+@@ -819,9 +819,9 @@
+     env = os.environ.copy()
+ 
+     env.update({
+-        "GRADLE_OPTS": "-Dfile.encoding=utf-8",
++        "GRADLE_OPTS": (env.get("GRADLE_OPTS", "") + " -Dfile.encoding=utf-8").strip(),
+         "JAVA_HOME": java_home,
+-        "JAVA_TOOL_OPTIONS": "-Dfile.encoding=utf-8",
++        "JAVA_TOOL_OPTIONS": (env.get("JAVA_TOOL_OPTIONS", "") + " -Dfile.encoding=utf-8").strip(),
+         # Let Gradle get the right Python path on Windows
+         "GRADLE_MACH_PYTHON": sys.executable,
+     })

@@ -1,0 +1,23 @@
+--- a/config/makefiles/rust.mk
++++ b/config/makefiles/rust.mk
+@@ -54,6 +54,12 @@
+ # These flags are passed via `cargo rustc` and only apply to the final rustc
+ # invocation (i.e., only the top-level crate, not its dependencies).
+ cargo_rustc_flags = $(CARGO_RUSTCFLAGS)
++
++ifeq ($(relativesrcdir),toolkit/library/rust)
++RUST_LIBRARY_LTO :=
++cargo_rustc_flags += -Ccodegen-units=16
++export RUSTC_WRAPPER := $(topsrcdir)/build/gkrust-codegen-wrapper.sh
++endif
+ # Enable link-time optimization for release builds.
+ ifdef RUST_LIBRARY_LTO
+ cargo_rustc_flags += -Clto
+--- /dev/null
++++ b/build/gkrust-codegen-wrapper.sh
+@@ -0,0 +1,5 @@
++#!/bin/sh
++if [ "${CARGO_CRATE_NAME:-}" = gkrust ]; then
++    exec "$@" -Ccodegen-units=16
++fi
++exec "$@"
