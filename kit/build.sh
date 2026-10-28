@@ -11,7 +11,7 @@ printf 'Compiling Gecko and GeckoView. Log: %s\n' "$LOG_DIR/native-build.log"
     > "$LOG_DIR/native-build.log" 2>&1
 python3 "$SCRIPT_ROOT/../ci/verify_generated.py"
 printf 'Assembling Fenix release. Log: %s\n' "$LOG_DIR/fenix-release.log"
-./mach gradle fenix:assembleRelease -PdisableOptimization -PdisableDebugSigning \
+./mach gradle fenix:assembleRelease -PdisableDebugSigning \
     > "$LOG_DIR/fenix-release.log" 2>&1
 python3 - "$FIREFOX_BUILD_ROOT" <<'PY'
 from pathlib import Path

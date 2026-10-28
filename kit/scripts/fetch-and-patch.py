@@ -64,7 +64,8 @@ if 'source_git' in manifest:
 for record in manifest['archives']:
     install(record, work if record['name'] == 'source' else state)
 
-for name in ('build-configuration.patch', 'gradle-environment.patch', 'private-release.patch', 'manifest-initializer.patch', 'gkrust-low-memory.patch'):
+rust_patch = 'rust-thinlto-159.patch' if manifest['firefox_version'].split('.')[0] == '159' else 'gkrust-low-memory.patch'
+for name in ('build-configuration.patch', 'gradle-environment.patch', 'private-release.patch', 'manifest-initializer.patch', rust_patch):
     patch = kit / 'patches' / name
     command = ['patch', '--batch', '--fuzz=0', '-p1', '-i', str(patch)]
     forward = subprocess.run(command + ['--forward', '--dry-run'], cwd=source, capture_output=True, text=True)
@@ -75,7 +76,8 @@ for name in ('build-configuration.patch', 'gradle-environment.patch', 'private-r
         if reverse.returncode:
             raise RuntimeError(f'Patch cannot be applied or verified as already applied: {name}\n{forward.stdout}\n{forward.stderr}')
 
-(source / 'build/gkrust-codegen-wrapper.sh').chmod(0o755)
+if rust_patch == 'gkrust-low-memory.patch':
+    (source / 'build/gkrust-codegen-wrapper.sh').chmod(0o755)
 
 runtime = state / 'clang/lib/clang/22/lib'
 expected = runtime / 'wasi/libclang_rt.builtins-wasm32.a'

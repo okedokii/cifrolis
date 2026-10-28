@@ -1,19 +1,8 @@
 {
-  "firefox_version": "158.0",
+  "firefox_version": "159.0",
   "host": "Linux x86_64",
   "target": "Android arm64-v8a",
   "archives": [
-    {
-      "name": "source",
-      "filename": "firefox-158.0.source.tar.xz",
-      "directory": "firefox-158.0",
-      "url": "https://archive.mozilla.org/pub/firefox/releases/158.0/source/firefox-158.0.source.tar.xz",
-      "size_bytes": 814889676,
-      "algorithm": "sha512",
-      "digest": "14b8ffdc325a234061db14dea9bd144786dc2c84468a5dfe2bb70bb9558f63f73427cf244eaf461010ee01dfdf04f2cae68bae9f07b4820603a4bcd4462f7960",
-      "checksum_source": "https://archive.mozilla.org/pub/firefox/releases/158.0/SHA512SUMS",
-      "download_checksum_verified_in_original_build": true
-    },
     {
       "name": "clang",
       "filename": "clang.tar.zst",
@@ -43,7 +32,7 @@
     }
   ],
   "bootstrap": {
-    "implementation": "Exact Firefox 158.0 mozboot APIs; see scripts/bootstrap-minimal.py",
+    "implementation": "Firefox Android 159.0 mozboot APIs reviewed; existing pinned Clang/WASI toolchains retained",
     "rust_toolchain": "1.90.0",
     "rust_target": "aarch64-linux-android",
     "rustup": {
@@ -76,5 +65,10 @@
     "original_system_jdk": "OpenJDK 17.0.20+8",
     "original_node": "24.19.0",
     "certificate_verifier_python_package": "cryptography==50.0.2"
+  },
+  "source_git": {
+    "repository": "https://github.com/mozilla-firefox/firefox.git",
+    "tag": "FIREFOX-ANDROID_159_0_RELEASE",
+    "commit": "9a2dc53c369c7ae5172018b35988e1d2ffeff402"
   }
 }

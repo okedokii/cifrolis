@@ -1,0 +1,26 @@
+name: Launch requested release
+on:
+  push:
+    branches: [main]
+    paths: ['ci/launch-request.json']
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: cifrolis-launch-release
+  cancel-in-progress: false
+jobs:
+  launch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate the recipe before removing a release
+        run: |
+          python3 -m compileall -q ci kit/scripts
+          python3 -m unittest discover -s ci -p 'test_*.py'
+          bash -n ci/*.sh kit/*.sh kit/mozconfig
+      - name: Delete the explicitly requested old release and start the new build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python3 ci/launch_release.py
