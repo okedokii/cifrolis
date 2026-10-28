@@ -160,7 +160,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("apk", type=Path)
     parser.add_argument("--apkanalyzer", type=Path)
-    parser.add_argument("--expected-package", default="org.mozilla.firefox.ruca")
+    parser.add_argument("--expected-package", default="io.github.okedokii.cifrolis")
     parser.add_argument("--expected-version", default="158.0")
     parser.add_argument("--expected-min-sdk", type=int, default=26)
     parser.add_argument("--expected-target-sdk", type=int)

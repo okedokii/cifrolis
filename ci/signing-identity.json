@@ -1,7 +1,7 @@
 {
-  "application_id": "org.mozilla.firefox.ruca",
+  "application_id": "io.github.okedokii.cifrolis",
   "signer_sha256": "ec29a528497ebbf0cef55cf413658e0476ee2294fecc367092d2dd12224ed8ea",
   "key_alias": "firefox-ruca",
   "created_utc": "2026-10-28T13:37:33.704044+00:00",
-  "migration": "New permanent signing key. Cannot update org.mozilla.firefox.ruca signed with the lost key."
+  "migration": "New application ID io.github.okedokii.cifrolis; installs separately from org.mozilla.firefox.ruca. Permanent signing key unchanged."
 }

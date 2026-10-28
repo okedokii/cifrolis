@@ -28,7 +28,7 @@ import zipfile
 
 ns = "{http://schemas.android.com/apk/res/android}"
 root = ET.parse(sys.argv[2]).getroot()
-assert root.attrib["package"] == "org.mozilla.firefox.ruca", root.attrib
+assert root.attrib["package"] == "io.github.okedokii.cifrolis", root.attrib
 assert ns + "sharedUserId" not in root.attrib, "A private APK must not inherit Mozilla's shared UID"
 app = root.find("application")
 assert app is not None

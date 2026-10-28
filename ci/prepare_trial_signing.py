@@ -17,7 +17,7 @@ with tarfile.open(artifact/'verification.tar.gz') as archive:
 report=json.loads((work/'verification/manifest-check.json').read_text())
 version=validate_version(report['version_name'])
 code=int(report['version_code'])
-if report['status']!='passed' or report['package']!='org.mozilla.firefox.ruca' or not 2016191386 < code <= 2100000000:
+if report['status']!='passed' or report['package']!='io.github.okedokii.cifrolis' or not 2016191386 < code <= 2100000000:
     raise ValueError('Invalid unsigned trial identity or manifest report')
 apks=list(artifact.glob('*.apk'))
 if len(apks)!=1:
