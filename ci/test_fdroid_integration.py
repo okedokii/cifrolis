@@ -45,9 +45,17 @@ class SigningIntegrationTests(unittest.TestCase):
                   patch.object(repository, 'run', return_value='[[]]')):
                 repository.main()
             public = root / 'public'
+            # F-Droid intentionally signs the legacy v1 index with SHA-1 for
+            # old Android clients. Only that compatibility check enables SHA-1;
+            # the modern entry.jar must pass Java's unchanged security policy.
+            legacy_policy = root / 'legacy-java.security'
+            legacy_policy.write_text('jdk.jar.disabledAlgorithms=MD2, MD5\n')
             for name in ['index-v1.jar', 'entry.jar']:
                 signed = public / 'fdroid/repo' / name
-                output = subprocess.check_output(['jarsigner', '-verify', str(signed)], text=True)
+                args = ['jarsigner', '-verify']
+                if name == 'index-v1.jar':
+                    args.append('-J-Djava.security.properties=' + str(legacy_policy))
+                output = subprocess.check_output([*args, str(signed)], text=True)
                 self.assertIn('jar verified', output)
             self.assertFalse((root / 'cifrolis-fdroid').exists())
             self.assertFalse(list(public.rglob('*.p12')))

@@ -144,6 +144,7 @@ def main():
                 stream.write(f'CurrentVersionCode: {selected[0]["code"]}\n')
         # JSON is valid YAML, including correctly escaped passwords.
         config = dict(repo_url=repo_url, repo_name='Цифролис',
+                      repo_icon='fdroid-icon.png',
                       repo_description='Неофициальные сборки Firefox для Android с сертификатами Минцифры.',
                       repo_keyalias=identity['key_alias'], keystore=str(keystore),
                       keystorepass=password, keypass=password,

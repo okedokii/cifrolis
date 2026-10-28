@@ -34,7 +34,7 @@ jobs:
       - name: Install F-Droid repository tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y fdroidserver aapt apksigner
+          sudo apt-get install -y --no-install-recommends fdroidserver aapt apksigner
       - name: Build and sign repository from published releases
         env:
           GH_TOKEN: ${{ github.token }}

@@ -31,6 +31,6 @@ jobs:
       - name: Install F-Droid tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y fdroidserver aapt apksigner
+          sudo apt-get install -y --no-install-recommends fdroidserver aapt apksigner
       - name: Verify real index signing with a disposable test key
         run: python3 -m unittest discover -s ci -p 'test_fdroid_integration.py' -v
