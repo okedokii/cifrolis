@@ -1,0 +1,12 @@
+{
+  "version": "159.0",
+  "requested_on": "2026-10-28",
+  "delete_release": {
+    "id": 426890210,
+    "tag": "v158.0",
+    "assets": [
+      {"id": 685534574, "name": "firefox-158.0-arm64-ruca.apk"},
+      {"id": 685534573, "name": "firefox-158.0-arm64-ruca.apk.sha256"}
+    ]
+  }
+}
