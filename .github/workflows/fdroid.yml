@@ -1,0 +1,66 @@
+name: Publish F-Droid repository
+on:
+  workflow_dispatch:
+  release:
+    types: [published, edited, deleted]
+  workflow_run:
+    workflows: [Цифролис, Publish tested release]
+    types: [completed]
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fdroid.yml', 'ci/fdroid_repository.py', 'fdroid/**']
+permissions:
+  contents: read
+concurrency:
+  group: fdroid-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.event != 'pull_request')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install F-Droid repository tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fdroidserver aapt apksigner
+      - name: Build and sign repository from published releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUCA_KEYSTORE_B64: ${{ secrets.RUCA_KEYSTORE_B64 }}
+          RUCA_KEYSTORE_PASSWORD: ${{ secrets.RUCA_KEYSTORE_PASSWORD }}
+        run: python3 ci/fdroid_repository.py
+      - name: Upload only public repository files
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - name: Check Pages configuration
+        uses: actions/configure-pages@v5
+      - name: Remove temporary signing files
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/cifrolis-fdroid"
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy repository
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,14 @@
+Categories:
+  - Internet
+License: MPL-2.0
+SourceCode: https://github.com/okedokii/firefox-ruca-android
+IssueTracker: https://github.com/okedokii/firefox-ruca-android/issues
+Name: Цифролис
+Summary: Firefox для Android со встроенными сертификатами Минцифры
+Description: |
+  Неофициальная сборка Firefox для Android со встроенными российскими
+  корневыми сертификатами, собственным именем и иконкой.
+  Устанавливается рядом с официальным Firefox. Системное хранилище
+  сертификатов Android не изменяется. Не связана с Mozilla.
+AutoUpdateMode: None
+UpdateCheckMode: None

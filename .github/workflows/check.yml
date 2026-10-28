@@ -2,9 +2,9 @@ name: Check recipe
 on:
   workflow_dispatch:
   push:
-    paths: ['ci/**', 'kit/**', '.github/workflows/**']
+    paths: ['ci/**', 'kit/**', 'fdroid/**', '.github/workflows/**']
   pull_request:
-    paths: ['ci/**', 'kit/**', '.github/workflows/**']
+    paths: ['ci/**', 'kit/**', 'fdroid/**', '.github/workflows/**']
 permissions:
   contents: read
 jobs:
@@ -20,3 +20,17 @@ jobs:
       - run: python3 -m unittest discover -s ci -p 'test_*.py'
       - run: bash -n ci/build.sh ci/sign.sh ci/unsigned_trial.sh kit/env.sh kit/prepare.sh kit/build.sh kit/sign.sh
       - run: python3 kit/scripts/inject_certificates.py --cert-dir kit/certs
+  fdroid-smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install F-Droid tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fdroidserver aapt apksigner
+      - name: Verify real index signing with a disposable test key
+        run: python3 -m unittest discover -s ci -p 'test_fdroid_integration.py' -v

@@ -4,3 +4,4 @@ dist/
 *.jks
 keystore-password.txt
 __pycache__/
+public/
