@@ -1,0 +1,266 @@
+name: Цифролис
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Stable Android version (blank = Mozilla mobile_versions.json)'
+        required: false
+        type: string
+      publish:
+        description: 'Publish release immediately (otherwise draft)'
+        default: false
+        type: boolean
+      unsigned:
+        description: 'Trial build without signing or release'
+        default: false
+        type: boolean
+  push:
+    branches: [main]
+    paths: ['ci/trial-request.json']
+  # Enable only after the first successful manual build and phone tests.
+  schedule:
+    - cron: '23 6 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: firefox-ruca-release
+  cancel-in-progress: false
+jobs:
+  discover:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || vars.AUTO_BUILD == 'true'
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.discover.outputs.version }}
+      code: ${{ steps.discover.outputs.code }}
+      build: ${{ steps.discover.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: discover
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_VERSION: ${{ inputs.version || (github.event_name == 'push' && '159.0') }}
+        run: python3 ci/discover.py
+  pin-source:
+    outputs:
+      tag: ${{ steps.pin.outputs.tag }}
+    needs: discover
+    if: needs.discover.outputs.build == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      FIREFOX_VERSION: ${{ needs.discover.outputs.version }}
+      RUCA_VERSION_CODE: ${{ needs.discover.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Закрепить исходники тегом релиза перед сборкой
+        id: pin
+        if: github.event_name != 'push' && inputs.unsigned != true
+        run: python3 ci/pin_build_source.py
+  build:
+    continue-on-error: true
+    outputs:
+      success: ${{ steps.built.outputs.success }}
+      resource_failure: ${{ steps.compile.outputs.resource_failure }}
+    needs: [discover, pin-source]
+    if: needs.discover.outputs.build == 'true'
+    # Optional variable: ["self-hosted","linux","x64","firefox-ruca"]
+    runs-on: ${{ fromJSON(vars.RUCA_RUNNER || '"ubuntu-24.04"') }}
+    timeout-minutes: 350
+    env:
+      FIREFOX_VERSION: ${{ needs.discover.outputs.version }}
+      RUCA_VERSION_CODE: ${{ needs.discover.outputs.code }}
+      RUCA_LTO: thin
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set isolated work directory
+        run: echo "FIREFOX_BUILD_ROOT=$RUNNER_TEMP/firefox-ruca-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+      - name: Check secrets are configured
+        if: github.event_name != 'push' && inputs.unsigned != true
+        env:
+          HAS_KEY: ${{ secrets.RUCA_KEYSTORE_B64 != '' }}
+          HAS_PASSWORD: ${{ secrets.RUCA_KEYSTORE_PASSWORD != '' }}
+        run: test "$HAS_KEY" = true && test "$HAS_PASSWORD" = true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check pinned signing identity before compiling
+        if: github.event_name != 'push' && inputs.unsigned != true
+        env:
+          RUCA_KEYSTORE_B64: ${{ secrets.RUCA_KEYSTORE_B64 }}
+          RUCA_KEYSTORE_PASSWORD: ${{ secrets.RUCA_KEYSTORE_PASSWORD }}
+        run: bash ci/sign.sh --check-key
+      - name: Reclaim space on ephemeral GitHub runner
+        if: vars.RUCA_RUNNER == ''
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/swift /opt/hostedtoolcache/CodeQL
+          docker image prune --all --force
+          df -h
+      - name: Install host build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git autoconf2.13 build-essential python3-venv python3-dev curl xz-utils zstd patch m4 nasm pkg-config libasound2-dev libcurl4-openssl-dev libdbus-1-dev libdbus-glib-1-dev libgtk-3-dev libpulse-dev libx11-xcb-dev libxt-dev unzip zip perl
+      - name: Compile Gecko and Fenix with resource detection
+        id: compile
+        run: python3 ci/run_build.py
+      - name: Sign and verify
+        if: github.event_name != 'push' && inputs.unsigned != true
+        env:
+          RUCA_KEYSTORE_B64: ${{ secrets.RUCA_KEYSTORE_B64 }}
+          RUCA_KEYSTORE_PASSWORD: ${{ secrets.RUCA_KEYSTORE_PASSWORD }}
+        run: bash ci/sign.sh
+      - name: Verify unsigned trial
+        if: github.event_name == 'push' || inputs.unsigned == true
+        run: bash ci/unsigned_trial.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ (github.event_name == 'push' || inputs.unsigned == true) && 'unsigned-trial' || 'signed-apk' }}
+          path: dist/*
+          retention-days: 1
+          if-no-files-found: error
+      - name: Upload build diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-diagnostics-${{ env.RUCA_LTO }}
+          path: ${{ env.FIREFOX_BUILD_ROOT }}/logs/
+          retention-days: 1
+          if-no-files-found: ignore
+      - id: built
+        run: echo "success=true" >> "$GITHUB_OUTPUT"
+      - name: Remove build work directory
+        if: always()
+        run: |
+          if [[ "$FIREFOX_BUILD_ROOT" == "$RUNNER_TEMP"/firefox-ruca-* ]]; then
+            rm -rf -- "$FIREFOX_BUILD_ROOT"
+          fi
+  build-without-lto:
+    outputs:
+      success: ${{ steps.built.outputs.success }}
+      resource_failure: ${{ steps.compile.outputs.resource_failure }}
+    needs: [discover, build]
+    if: always() && needs.discover.result == 'success' && needs.build.outputs.resource_failure == 'true'
+    # Optional variable: ["self-hosted","linux","x64","firefox-ruca"]
+    runs-on: ${{ fromJSON(vars.RUCA_RUNNER || '"ubuntu-24.04"') }}
+    timeout-minutes: 350
+    env:
+      FIREFOX_VERSION: ${{ needs.discover.outputs.version }}
+      RUCA_VERSION_CODE: ${{ needs.discover.outputs.code }}
+      RUCA_LTO: none
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set isolated work directory
+        run: echo "FIREFOX_BUILD_ROOT=$RUNNER_TEMP/firefox-ruca-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+      - name: Check secrets are configured
+        if: github.event_name != 'push' && inputs.unsigned != true
+        env:
+          HAS_KEY: ${{ secrets.RUCA_KEYSTORE_B64 != '' }}
+          HAS_PASSWORD: ${{ secrets.RUCA_KEYSTORE_PASSWORD != '' }}
+        run: test "$HAS_KEY" = true && test "$HAS_PASSWORD" = true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check pinned signing identity before compiling
+        if: github.event_name != 'push' && inputs.unsigned != true
+        env:
+          RUCA_KEYSTORE_B64: ${{ secrets.RUCA_KEYSTORE_B64 }}
+          RUCA_KEYSTORE_PASSWORD: ${{ secrets.RUCA_KEYSTORE_PASSWORD }}
+        run: bash ci/sign.sh --check-key
+      - name: Reclaim space on ephemeral GitHub runner
+        if: vars.RUCA_RUNNER == ''
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/swift /opt/hostedtoolcache/CodeQL
+          docker image prune --all --force
+          df -h
+      - name: Install host build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git autoconf2.13 build-essential python3-venv python3-dev curl xz-utils zstd patch m4 nasm pkg-config libasound2-dev libcurl4-openssl-dev libdbus-1-dev libdbus-glib-1-dev libgtk-3-dev libpulse-dev libx11-xcb-dev libxt-dev unzip zip perl
+      - name: Compile Gecko and Fenix with resource detection
+        id: compile
+        run: python3 ci/run_build.py
+      - name: Sign and verify
+        if: github.event_name != 'push' && inputs.unsigned != true
+        env:
+          RUCA_KEYSTORE_B64: ${{ secrets.RUCA_KEYSTORE_B64 }}
+          RUCA_KEYSTORE_PASSWORD: ${{ secrets.RUCA_KEYSTORE_PASSWORD }}
+        run: bash ci/sign.sh
+      - name: Verify unsigned trial
+        if: github.event_name == 'push' || inputs.unsigned == true
+        run: bash ci/unsigned_trial.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ (github.event_name == 'push' || inputs.unsigned == true) && 'unsigned-trial' || 'signed-apk' }}
+          path: dist/*
+          retention-days: 1
+          if-no-files-found: error
+      - name: Upload build diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-diagnostics-${{ env.RUCA_LTO }}
+          path: ${{ env.FIREFOX_BUILD_ROOT }}/logs/
+          retention-days: 1
+          if-no-files-found: ignore
+      - id: built
+        run: echo "success=true" >> "$GITHUB_OUTPUT"
+      - name: Remove build work directory
+        if: always()
+        run: |
+          if [[ "$FIREFOX_BUILD_ROOT" == "$RUNNER_TEMP"/firefox-ruca-* ]]; then
+            rm -rf -- "$FIREFOX_BUILD_ROOT"
+          fi
+  require-build:
+    needs: [discover, build, build-without-lto]
+    if: always() && needs.discover.result == 'success' && needs.discover.outputs.build == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require a successfully built and verified artifact
+        env:
+          PRIMARY_OK: ${{ needs.build.outputs.success }}
+          RETRY_OK: ${{ needs.build-without-lto.outputs.success }}
+        run: test "$PRIMARY_OK" = true || test "$RETRY_OK" = true
+  release:
+    if: always() && needs.require-build.result == 'success' && github.event_name != 'push' && inputs.unsigned != true
+    needs: [discover, pin-source, require-build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: write
+    env:
+      RELEASE_TAG: ${{ needs.pin-source.outputs.tag }}
+      VERSION: ${{ needs.discover.outputs.version }}
+      CODE: ${{ needs.discover.outputs.code }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SHOULD_PUBLISH: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish) || (github.event_name == 'schedule' && vars.AUTO_PUBLISH == 'true') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: signed-apk
+          path: dist
+      - name: Create draft and upload verified artifacts
+        run: |
+          cat > notes.txt <<EOF
+          Цифролис — неофициальная сборка Firefox для Android со встроенными сертификатами Минцифры.
+
+          Скачайте APK из файлов релиза. Дополнительно устанавливать сертификаты в Android не требуется.
+          EOF
+          args=(--tag "$RELEASE_TAG" --version "$VERSION" --code "$CODE" --target "$GITHUB_SHA" --notes-file notes.txt)
+          if [[ "$SHOULD_PUBLISH" == true ]]; then
+            args+=(--publish)
+          fi
+          python3 ci/publish_release.py "${args[@]}"

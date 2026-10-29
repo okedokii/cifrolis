@@ -1,0 +1,29 @@
+ac_add_options --enable-project=mobile/android
+ac_add_options --target=aarch64
+ac_add_options --enable-android-subproject=fenix
+ac_add_options --disable-bootstrap
+ac_add_options --disable-android-emulator
+ac_add_options --disable-debug-symbols
+ac_add_options --disable-tests
+ac_add_options --enable-optimize
+ac_add_options --enable-release
+ac_add_options RUSTC_OPT_LEVEL=2
+if [ "${RUCA_LTO:-thin}" = thin ]; then
+    ac_add_options --enable-lto=thin
+    export LDFLAGS="${LDFLAGS:-} -Wl,--thinlto-jobs=1"
+else
+    ac_add_options --disable-lto
+fi
+ac_add_options --disable-android-bundle
+ac_add_options --disable-android-debuggable
+ac_add_options --with-java-bin-path="$JAVA_HOME/bin"
+export CBINDGEN="$MOZBUILD_STATE_PATH/cbindgen/bin/cbindgen"
+export CC="$MOZBUILD_STATE_PATH/clang/bin/clang"
+export CXX="$MOZBUILD_STATE_PATH/clang/bin/clang++"
+export HOST_CC="$MOZBUILD_STATE_PATH/clang/bin/clang"
+export HOST_CXX="$MOZBUILD_STATE_PATH/clang/bin/clang++"
+ac_add_options --with-libclang-path="$MOZBUILD_STATE_PATH/clang/lib"
+ac_add_options --with-clang-path="$MOZBUILD_STATE_PATH/clang/bin/clang"
+ac_add_options --with-wasi-sysroot="$MOZBUILD_STATE_PATH/sysroot-wasm32-wasi"
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/../obj-arm64
+mk_add_options MOZ_MAKE_FLAGS=-j2

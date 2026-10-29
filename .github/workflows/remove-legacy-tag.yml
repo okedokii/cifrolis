@@ -1,0 +1,21 @@
+name: Remove legacy v158.0 tag
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/remove-legacy-tag.yml']
+permissions:
+  contents: write
+jobs:
+  remove:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Delete only the verified legacy tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EXPECTED_SHA: 4b36a0d00cb4a87b5b549277adf729977631a9c5
+        run: |
+          actual=$(gh api "repos/$GH_REPO/git/ref/tags/v158.0" --jq '.object.sha')
+          test "$actual" = "$EXPECTED_SHA"
+          gh api --method DELETE "repos/$GH_REPO/git/refs/tags/v158.0"
+          echo 'Deleted refs/tags/v158.0'

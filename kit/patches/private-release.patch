@@ -1,0 +1,68 @@
+--- a/mobile/android/fenix/app/build.gradle
++++ b/mobile/android/fenix/app/build.gradle
+@@ -49,7 +49,7 @@
+         }
+ 
+-        applicationId "org.mozilla"
++        applicationId "io.github.okedokii"
+         minSdk config.minSdkVersion
+         targetSdk config.targetSdkVersion
+         versionCode 1
+         versionName Config.generateDebugVersionName()
+@@ -137,18 +137,11 @@
+         }
+         release releaseTemplate >> {
+             buildConfigField "boolean", "USE_RELEASE_VERSIONING", "true"
+-            applicationIdSuffix ".firefox"
+-            def deepLinkSchemeValue = "fenix"
++            applicationIdSuffix ".cifrolis"
++            debuggable false
++            def deepLinkSchemeValue = "fenix-ruca"
+             buildConfigField "String", "DEEP_LINK_SCHEME", "\"$deepLinkSchemeValue\""
+             manifestPlaceholders.putAll([
+-                    // This release type is meant to replace Firefox (Release channel) and therefore needs to inherit
+-                    // its sharedUserId for all eternity. See:
+-                    // https://searchfox.org/mozilla-esr68/search?q=moz_android_shared_id&case=false&regexp=false&path=
+-                    // Shipping an app update without sharedUserId can have
+-                    // fatal consequences. For example see:
+-                    //  - https://issuetracker.google.com/issues/36924841
+-                    //  - https://issuetracker.google.com/issues/36905922
+-                    "sharedUserId": "org.mozilla.firefox.sharedID",
+                     "deepLinkScheme": deepLinkSchemeValue,
+             ])
+         }
+@@ -227,7 +220,7 @@
+             if (project.hasProperty("benchmarkTest")) {
+                 include "arm64-v8a"
+             } else {
+-                include "armeabi-v7a", "arm64-v8a", "x86_64"
++                include "arm64-v8a"
+                 if (gradle.mozconfig.substs.MOZILLA_OFFICIAL || System.getenv("MOZ_BUILD_CONFIG_LINT") == "1") {
+                     universalApk true
+                 }
+--- a/mobile/android/fenix/app/src/release/AndroidManifest.xml
++++ b/mobile/android/fenix/app/src/release/AndroidManifest.xml
+@@ -3,13 +3,5 @@
+    - License, v. 2.0. If a copy of the MPL was not distributed with this
+    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
+ 
+-<!--
+-  sharedUserId: This release type is meant to replace Firefox (Release channel) and therefore needs to inherit
+-                its sharedUserId for all eternity. Shipping an app update without sharedUserId can have
+-                fatal consequences. For example see:
+-                - https://issuetracker.google.com/issues/36924841
+-                - https://issuetracker.google.com/issues/36905922
+--->
+-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:sharedUserId="${sharedUserId}">
++<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ </manifest>
+--- a/mobile/android/fenix/app/src/release/res/values/static_strings.xml
++++ b/mobile/android/fenix/app/src/release/res/values/static_strings.xml
+@@ -4,5 +4,5 @@
+    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
+ <resources>
+     <!-- Name of the application -->
+-    <string name="app_name" translatable="false">Firefox</string>
++    <string name="app_name" translatable="false">Цифролис</string>
+ </resources>

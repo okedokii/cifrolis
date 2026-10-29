@@ -1,0 +1,62 @@
+name: Publish F-Droid repository
+on:
+  workflow_dispatch:
+  release:
+    types: [published, edited, deleted]
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fdroid.yml', 'ci/fdroid_repository.py', 'fdroid/**', 'website/**']
+permissions:
+  contents: read
+concurrency:
+  group: fdroid-pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install current F-Droid repository tools
+        run: bash ci/install_fdroid_tools.sh
+      - name: Build and sign repository from published releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUCA_KEYSTORE_B64: ${{ secrets.RUCA_KEYSTORE_B64 }}
+          RUCA_KEYSTORE_PASSWORD: ${{ secrets.RUCA_KEYSTORE_PASSWORD }}
+        run: python3 ci/fdroid_repository.py
+      - name: Add website
+        run: cp -r website/. public/
+      - name: Upload only public repository files
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - name: Check Pages configuration
+        uses: actions/configure-pages@v5
+      - name: Remove temporary signing files
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/cifrolis-fdroid"
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy repository
+        id: deployment
+        uses: actions/deploy-pages@v4

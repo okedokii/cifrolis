@@ -1,0 +1,25 @@
+--- a/python/mozbuild/mozbuild/rust_commands.py
++++ b/python/mozbuild/mozbuild/rust_commands.py
+@@ -4,6 +4,7 @@
+ 
+ """Compose Cargo commands and environments for Rust build edges."""
+ 
++import os
+ from dataclasses import asdict, dataclass, fields
+ 
+ from mozshellutil import quote as shell_quote
+@@ -417,8 +418,12 @@
+     if cmd.kind == "library":
+         flags += substs.get("MOZ_RUST_LIBRARY_RUSTCFLAGS")
+ 
+-    if applies_library_lto(cmd.kind, cmd.lto, substs):
+-        flags.append("-Clto")
++    # ThinLTO is bounded for the standard CI runner; the resource retry
++    # disables LTO while retaining release compiler optimizations.
++    if applies_library_lto(cmd.kind, cmd.lto, substs) and os.environ.get("RUCA_LTO", "thin") != "none":
++        flags.append("-Clto=thin")
++    if cmd.kind == "library" and cmd.working_directory.rstrip("/").endswith("toolkit/library/rust"):
++        flags.append("-Ccodegen-units=16")
+ 
+     flags += invocation.cargo_rustcflags
+ 

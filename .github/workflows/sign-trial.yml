@@ -1,0 +1,108 @@
+name: Sign validated trial
+on:
+  push:
+    branches: [main]
+    paths: ['ci/sign-request.json']
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Successful unsigned Цифролис run ID'
+        required: true
+        type: string
+  workflow_run:
+    workflows: [Firefox RU CA, Цифролис]
+    types: [completed]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: firefox-ruca-sign-trial
+  cancel-in-progress: false
+jobs:
+  preflight:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    env:
+      FIREFOX_VERSION: '158.0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify configured signing key
+        env:
+          RUCA_KEYSTORE_B64: ${{ secrets.RUCA_KEYSTORE_B64 }}
+          RUCA_KEYSTORE_PASSWORD: ${{ secrets.RUCA_KEYSTORE_PASSWORD }}
+        run: |
+          export FIREFOX_BUILD_ROOT="$RUNNER_TEMP/sign-preflight-$GITHUB_RUN_ID"
+          bash ci/sign.sh --check-key
+  sign:
+    needs: preflight
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TRIAL_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify trusted completed trial run
+        run: |
+          python3 - <<'PY'
+          import json,os,subprocess
+          run_id=os.environ['TRIAL_RUN_ID'] or str(json.load(open('ci/sign-request.json'))['run_id'])
+          if not run_id.isdecimal():
+              raise ValueError('Invalid run ID')
+          run=json.loads(subprocess.check_output(['gh','api',f'repos/{os.environ["GH_REPO"]}/actions/runs/{run_id}']))
+          if run['conclusion']!='success' or run['head_branch']!='main' or run['event']!='push' or run['path']!='.github/workflows/build.yml' or run['head_repository']['full_name']!=os.environ['GH_REPO']:
+              raise ValueError('Only successful unsigned main-branch build.yml pushes can be signed')
+          with open(os.environ['GITHUB_ENV'],'a') as env:
+              env.write(f'TRIAL_RUN_ID={run_id}\n')
+              env.write(f'TRIAL_SHA={run["head_sha"]}\n')
+              env.write(f'FIREFOX_BUILD_ROOT={os.environ["RUNNER_TEMP"]}/sign-trial-{os.environ["GITHUB_RUN_ID"]}\n')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: unsigned-trial
+          path: trial-input
+          github-token: ${{ github.token }}
+          run-id: ${{ env.TRIAL_RUN_ID }}
+      - name: Restore verified trial metadata
+        run: python3 ci/prepare_trial_signing.py
+      - name: Prepare signing SDK
+        run: bash ci/signing_sdk.sh
+      - name: Sign and recheck final APK
+        env:
+          RUCA_KEYSTORE_B64: ${{ secrets.RUCA_KEYSTORE_B64 }}
+          RUCA_KEYSTORE_PASSWORD: ${{ secrets.RUCA_KEYSTORE_PASSWORD }}
+        run: bash ci/sign.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-apk
+          path: dist/*
+          retention-days: 1
+          if-no-files-found: error
+      - name: Create draft release
+        run: |
+          cat > notes.txt <<EOF
+          Firefox для Android со встроенными сертификатами Минцифры.
+
+          Скачайте APK из файлов релиза. Дополнительно устанавливать сертификаты в Android не требуется.
+          EOF
+          python3 ci/publish_release.py --version "$FIREFOX_VERSION" --code "$RUCA_VERSION_CODE" --target "$TRIAL_SHA" --notes-file notes.txt
+      - name: Remove signing work files
+        if: always()
+        run: |
+          if [[ "${FIREFOX_BUILD_ROOT:-}" == "$RUNNER_TEMP"/sign-trial-* ]]; then
+            rm -rf -- "$FIREFOX_BUILD_ROOT"
+          fi

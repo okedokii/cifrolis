@@ -1,0 +1,7 @@
+kit/work/
+dist/
+*.p12
+*.jks
+keystore-password.txt
+__pycache__/
+public/

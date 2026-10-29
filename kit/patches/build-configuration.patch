@@ -1,0 +1,46 @@
+--- a/build/moz.configure/android-sdk.configure
++++ b/build/moz.configure/android-sdk.configure
+@@ -238,7 +238,8 @@
+ 
+ 
+ # Emulator
+-@depends(android_sdk_root, android_os_info, want_bootstrap, avd_manifest)
++option("--disable-android-emulator", help="{Enable|Disable} Android emulator build prerequisites")
++@depends(android_sdk_root, android_os_info, want_bootstrap, avd_manifest, when="--enable-android-emulator")
+ @checking("for Android emulator")
+ @imports(_from="os.path", _import="exists")
+ @imports(_from="mozboot.android", _import="AndroidPackageList")
+@@ -304,9 +305,9 @@
+ )
+ 
+ 
+-@depends(want_bootstrap, moz_automation)
+-def want_android_avd_bootstrap(want_bootstrap, moz_automation):
+-    return not moz_automation and want_bootstrap("android-sdk")
++@depends(want_bootstrap, moz_automation, "--enable-android-emulator")
++def want_android_avd_bootstrap(want_bootstrap, moz_automation, emulator):
++    return bool(emulator) and not moz_automation and want_bootstrap("android-sdk")
+ 
+ 
+ @depends(
+@@ -373,7 +374,8 @@
+ 
+ check_android_tools("zipalign", android_build_tools)
+ check_android_tools("adb", android_platform_tools)
+-check_android_tools("emulator", android_emulator)
++with only_when("--enable-android-emulator"):
++    check_android_tools("emulator", android_emulator)
+ check_file("android.jar", android_platforms)
+ 
+ set_config("ANDROID_BUILD_TOOLS_VERSION", android_sdk_version.build_tools_version)
+--- a/python/mozboot/mozboot/android.py
++++ b/python/mozboot/mozboot/android.py
+@@ -949,7 +949,7 @@
+     the time, that's a mistake.
+     """
+     if gradle_props is None:
+-        gradle_props = Path.home() / ".gradle" / "gradle.properties"
++        gradle_props = Path(os.environ.get("GRADLE_USER_HOME", Path.home() / ".gradle")) / "gradle.properties"
+     key = "org.gradle.java.installations.paths"
+     mozbuild_prefix = MOZBUILD_PATH.resolve().as_posix() + "/"
+ 

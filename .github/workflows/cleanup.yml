@@ -1,0 +1,48 @@
+name: Обновить описание и схлопнуть историю
+on:
+  push:
+    branches: [main]
+    paths: ['ci/cleanup-request.json']
+permissions:
+  contents: write
+  actions: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Проверить изменения
+        run: |
+          python3 -m compileall -q ci kit/scripts
+          python3 -m unittest discover -s ci -p 'test_*.py'
+          bash -n ci/*.sh kit/*.sh
+      - name: Убрать служебные ветки, сохранённые тегами релизов
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python3 ci/retire_build_source.py
+      - name: Обновить имена файлов релиза
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python3 ci/rename_release_assets.py
+      - name: Убрать технический текст из релиза
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python3 ci/cleanup_repository.py
+      - name: Оставить один коммит в основной ветке
+        run: |
+          git config user.name 'okedokii'
+          git config user.email '63424732+okedokii@users.noreply.github.com'
+          current=$(git ls-remote origin refs/heads/main | cut -f1)
+          test "$current" = "$GITHUB_SHA"
+          tree=$(git rev-parse "$GITHUB_SHA^{tree}")
+          root=$(git commit-tree "$tree" -m 'Firefox для Android с российскими сертификатами')
+          test "$(git rev-parse "$root^{tree}")" = "$tree"
+          test -z "$(git show -s --format=%P "$root")"
+          git push --force-with-lease="refs/heads/main:$GITHUB_SHA" origin "$root:refs/heads/main"
+          echo "Основная ветка содержит один коммит: $root. Теги и файлы релизов сохранены."

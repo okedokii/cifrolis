@@ -1,0 +1,74 @@
+{
+  "firefox_version": "159.0",
+  "host": "Linux x86_64",
+  "target": "Android arm64-v8a",
+  "archives": [
+    {
+      "name": "clang",
+      "filename": "clang.tar.zst",
+      "directory": "clang",
+      "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/FW7ukxkQRXyZoroFTtCwBQ/artifacts/public/build/clang.tar.zst",
+      "size_bytes": 457861052,
+      "algorithm": "sha256",
+      "digest": "bd573a41efd0d892523afd642b6a67255c60bfa6641b36de40bfabcb3b02afa6",
+      "checksum_source": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/FW7ukxkQRXyZoroFTtCwBQ/artifacts/public/chain-of-trust.json",
+      "download_checksum_verified_in_original_build": true,
+      "version": "22.1.6",
+      "upstream_project": "mozilla-esr153",
+      "upstream_revision": "27c5c8e609553e240e7eee6fdde15748f48a7798",
+      "note": "Official Mozilla Clang 22 artifact selected after the source-derived stable158 cache index returned HTTP404."
+    },
+    {
+      "name": "wasi",
+      "filename": "sysroot-wasm32-wasi.tar.zst",
+      "directory": "sysroot-wasm32-wasi",
+      "url": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/SirUGMldT3uoFtKn74I9WQ/artifacts/public/build/sysroot-wasm32-wasi.tar.zst",
+      "size_bytes": 11909224,
+      "algorithm": "sha256",
+      "digest": "6d3fba5824b0c83c2115464dd18e5feb4d2d0c3092d4ad52add3be7e42addd7d",
+      "checksum_source": "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/SirUGMldT3uoFtKn74I9WQ/artifacts/public/chain-of-trust.json",
+      "download_checksum_verified_in_original_build": true,
+      "cache_index": "gecko.cache.level-3.toolchains.v3.sysroot-wasm32-wasi-clang-22.hash.fe39c95acf0175e6e748f4108cc29c473fb14153cfa31ec490896e2460d61a80"
+    }
+  ],
+  "bootstrap": {
+    "implementation": "Firefox Android 159.0 mozboot APIs reviewed; existing pinned Clang/WASI toolchains retained",
+    "rust_toolchain": "1.90.0",
+    "rust_target": "aarch64-linux-android",
+    "rustup": {
+      "version": "1.29.0",
+      "url": "https://static.rust-lang.org/rustup/archive/1.29.0/x86_64-unknown-linux-gnu/rustup-init",
+      "sha256": "4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10"
+    },
+    "cbindgen": {
+      "version": "0.29.4",
+      "command": "cargo install cbindgen --version 0.29.4 --locked --jobs 2 --root \"$MOZBUILD_STATE_PATH/cbindgen\""
+    },
+    "android_ndk": {
+      "version": "r30",
+      "url": "https://dl.google.com/android/repository/android-ndk-r30-linux.zip"
+    },
+    "android_cmdline_tools": {
+      "version": "23.0",
+      "revision": "16111833",
+      "url": "https://dl.google.com/android/repository/commandlinetools-linux-16111833_latest.zip"
+    },
+    "android_packages": [
+      "platform-tools",
+      "build-tools;37.0.0",
+      "platforms;android-37.2"
+    ],
+    "bundletool": {
+      "version": "1.18.3",
+      "url": "https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar"
+    },
+    "original_system_jdk": "OpenJDK 17.0.20+8",
+    "original_node": "24.19.0",
+    "certificate_verifier_python_package": "cryptography==50.0.2"
+  },
+  "source_git": {
+    "repository": "https://github.com/mozilla-firefox/firefox.git",
+    "tag": "FIREFOX-ANDROID_159_0_RELEASE",
+    "commit": "9a2dc53c369c7ae5172018b35988e1d2ffeff402"
+  }
+}
