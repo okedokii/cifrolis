@@ -1,0 +1,18 @@
+name: Trigger signed release build
+on:
+  push:
+    branches: [main]
+    paths: ['ci/release-build-request.json']
+permissions:
+  contents: read
+  actions: write
+jobs:
+  dispatch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify requested stable version and dispatch signed release build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python3 ci/dispatch_release.py

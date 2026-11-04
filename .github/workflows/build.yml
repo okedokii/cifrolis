@@ -17,9 +17,9 @@ on:
   push:
     branches: [main]
     paths: ['ci/trial-request.json']
-  # Enable only after the first successful manual build and phone tests.
+  # Check twice daily. Existing complete releases are skipped by ci/discover.py.
   schedule:
-    - cron: '23 6 * * *'
+    - cron: '37 5,17 * * *'
 permissions:
   contents: read
 concurrency:
@@ -27,7 +27,6 @@ concurrency:
   cancel-in-progress: false
 jobs:
   discover:
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || vars.AUTO_BUILD == 'true'
     runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.discover.outputs.version }}
@@ -40,6 +39,23 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REQUESTED_VERSION: ${{ inputs.version || (github.event_name == 'push' && '159.0') }}
         run: python3 ci/discover.py
+      - name: Check recipe and upstream compatibility before compiling
+        if: steps.discover.outputs.build == 'true'
+        env:
+          CANDIDATE_VERSION: ${{ steps.discover.outputs.version }}
+        run: |
+          python3 -m pip install --quiet cryptography==50.0.2
+          python3 -m compileall -q ci kit/scripts
+          python3 -m unittest discover -s ci -p 'test_*.py'
+          bash -n ci/*.sh kit/*.sh kit/mozconfig
+          python3 kit/scripts/inject_certificates.py --cert-dir kit/certs
+          python3 - <<'PY'
+          import json, os
+          baseline = json.load(open('kit/downloads.json'))['firefox_version']
+          candidate = os.environ['CANDIDATE_VERSION']
+          if int(candidate.split('.')[0]) != int(baseline.split('.')[0]):
+              print(f'Major upgrade {baseline} -> {candidate}: source patches, Fenix/Gecko compilation, and final APK/certificate checks must all pass before publication.')
+          PY
   pin-source:
     outputs:
       tag: ${{ steps.pin.outputs.tag }}
@@ -245,7 +261,7 @@ jobs:
       CODE: ${{ needs.discover.outputs.code }}
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      SHOULD_PUBLISH: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish) || (github.event_name == 'schedule' && vars.AUTO_PUBLISH == 'true') }}
+      SHOULD_PUBLISH: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish) || github.event_name == 'schedule' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4

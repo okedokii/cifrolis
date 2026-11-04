@@ -10,8 +10,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def validate_version(version):
-    if not re.fullmatch(r'159\.[0-9]+(?:\.[0-9]+)?', version):
-        raise ValueError('Only reviewed stable Android 159.x is admitted; review patches before another major')
+    # Follow stable Mozilla Android releases; do not accept beta, RC or nightly tags.
+    if not re.fullmatch(r'[1-9][0-9]*\.(?:0|[1-9][0-9]*)(?:\.(?:0|[1-9][0-9]*))?', version):
+        raise ValueError('Expected a stable Firefox Android version')
+    if int(version.split('.', 1)[0]) < 159:
+        raise ValueError('Firefox Android versions older than the reviewed 159 baseline are not supported')
     return version
 
 
