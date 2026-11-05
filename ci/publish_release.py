@@ -28,11 +28,6 @@ if not all(f.is_file() and f.stat().st_size for f in files):
     raise ValueError('Expected APK and checksum')
 # Technical reports stay in Actions artifacts and are not uploaded to Releases.
 notes=a.notes_file.read_text().rstrip()
-optimization=Path('dist/optimization.json')
-if optimization.is_file():
-    mode=json.loads(optimization.read_text())
-    label='ThinLTO' if mode['lto']=='thin' else 'без LTO после ограничения ресурсов runner'
-    notes+='\n\nОптимизация: Rust opt-level=2, R8; '+label+'.'
 notes+='\n\n'+metadata(a.version,a.code)+'\n'
 a.notes_file.write_text(notes)
 subprocess.run(['gh','release','create',tag,'--draft','--verify-tag','--target',a.target,'--title',f'v{a.version}','--notes-file',str(a.notes_file)],check=True)
