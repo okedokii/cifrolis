@@ -4,9 +4,9 @@ import json
 import os
 from pathlib import Path
 import subprocess
-import urllib.request
 
 from source_manifest import validate_version
+from mobile_versions import latest_stable
 
 
 def main():
@@ -14,8 +14,7 @@ def main():
     if set(request) != {'version', 'publish'} or request['publish'] is not True:
         raise ValueError('Expected an explicit published-release request')
     version = validate_version(request['version'])
-    with urllib.request.urlopen('https://product-details.mozilla.org/1.0/mobile_versions.json', timeout=60) as response:
-        latest = validate_version(json.load(response)['version'])
+    latest = latest_stable()
     if latest != version:
         raise ValueError(f'Requested {version}, but Mozilla latest is {latest}; do not start a stale build')
     subprocess.run(['gh', 'workflow', 'run', 'build.yml',

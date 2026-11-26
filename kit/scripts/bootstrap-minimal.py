@@ -16,7 +16,7 @@ gradle_home = Path(os.environ["GRADLE_USER_HOME"])
 cargo_home = Path(os.environ["CARGO_HOME"])
 assert android.NDK_VERSION == "r30"
 assert android.CMDLINE_TOOLS_VERSION == "16111833"
-assert MINIMUM_RUST_VERSION == "1.90.0"
+assert MINIMUM_RUST_VERSION == os.environ["RUSTUP_TOOLCHAIN"], "Rust toolchain differs from verified upstream requirement"
 assert rust.RUSTUP_VERSION == "1.29.0"
 
 gradle_home.mkdir(parents=True, exist_ok=True)
