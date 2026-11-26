@@ -1,5 +1,5 @@
 {
-  "firefox_version": "159.0",
+  "firefox_version": "161.0",
   "host": "Linux x86_64",
   "target": "Android arm64-v8a",
   "archives": [
@@ -32,8 +32,8 @@
     }
   ],
   "bootstrap": {
-    "implementation": "Firefox Android 159.0 mozboot APIs reviewed; existing pinned Clang/WASI toolchains retained",
-    "rust_toolchain": "1.90.0",
+    "implementation": "Firefox Android 161.0 mozboot requirements reviewed; Rust follows the verified source; existing hash-pinned Clang/WASI artifacts retained pending full build validation.",
+    "rust_toolchain": "1.95.0",
     "rust_target": "aarch64-linux-android",
     "rustup": {
       "version": "1.29.0",
@@ -68,7 +68,7 @@
   },
   "source_git": {
     "repository": "https://github.com/mozilla-firefox/firefox.git",
-    "tag": "FIREFOX-ANDROID_159_0_RELEASE",
-    "commit": "9a2dc53c369c7ae5172018b35988e1d2ffeff402"
+    "tag": "FIREFOX-ANDROID_161_0_RELEASE",
+    "commit": "9c70d5d48c866afc2e581d6b7ff6de98a1371d99"
   }
 }

@@ -10,6 +10,8 @@ done
 mkdir -p "$FIREFOX_BUILD_ROOT" "$MOZBUILD_STATE_PATH" "$GRADLE_USER_HOME" "$CARGO_HOME" "$RUSTUP_HOME" "$FIREFOX_BUILD_ROOT/logs"
 python3 "$SCRIPT_ROOT/../ci/source_manifest.py"
 python3 "$SCRIPT_ROOT/scripts/fetch-and-patch.py"
+RUSTUP_TOOLCHAIN=$(python3 "$SCRIPT_ROOT/../ci/rust_toolchain.py" "$FIREFOX_SOURCE_DIR")
+export RUSTUP_TOOLCHAIN
 python3 "$SCRIPT_ROOT/scripts/install_branding.py" --source-root "$FIREFOX_SOURCE_DIR"
 if [[ ! -x "$FIREFOX_BUILD_ROOT/verify-venv/bin/python" ]]; then
     python3 -m venv "$FIREFOX_BUILD_ROOT/verify-venv"

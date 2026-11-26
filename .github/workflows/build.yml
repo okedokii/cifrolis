@@ -37,7 +37,7 @@ jobs:
       - id: discover
         env:
           GH_TOKEN: ${{ github.token }}
-          REQUESTED_VERSION: ${{ inputs.version || (github.event_name == 'push' && '159.0') }}
+          REQUESTED_VERSION: ${{ github.event_name == 'push' && '159.0' || inputs.version || '' }}
         run: python3 ci/discover.py
       - name: Check recipe and upstream compatibility before compiling
         if: steps.discover.outputs.build == 'true'
